@@ -1,0 +1,19 @@
+# Credenziali reali - mai committare
+postfix/sasl/sasl_passwd
+postfix/sasl/sasl_passwd.db
+policy-daemon/quota.conf
+redis/redis.conf
+relay.db
+data/relay.db
+
+# Chiavi private (DKIM, rspamd, TLS)
+*.private
+*.pem
+*.key
+
+# Database/artefatti generati a runtime (rigenerati dal container)
+postfix/transport.db
+
+# File temporanei/backup
+*.bak
+.env

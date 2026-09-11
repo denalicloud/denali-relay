@@ -1,0 +1,1 @@
+mail._domainkey.all-domains mx517.servers.li:mail:/etc/opendkim/keys/mail.private

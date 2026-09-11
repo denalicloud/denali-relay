@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relay Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+        }
+        header {
+            background: white;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+        }
+        header h1 { font-size: 16px; font-weight: 600; }
+        header .user { font-size: 13px; color: #666; }
+        header a { color: #2563eb; text-decoration: none; font-size: 13px; margin-left: 16px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        /* Summary cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            border: 1px solid #e5e5e5;
+        }
+        .card .label { font-size: 12px; color: #666; margin-bottom: 4px; }
+        .card .value { font-size: 24px; font-weight: 600; }
+        .card.delivered .value { color: #16a34a; }
+        .card.bounced .value { color: #dc2626; }
+        .card.deferred .value { color: #d97706; }
+        .card.dropped .value { color: #6b7280; }
+
+        /* Filters */
+        .filters {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e5e5;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filters select, .filters input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .filters button {
+            padding: 6px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .filters label { font-size: 13px; color: #444; }
+
+        /* Tables */
+        .section {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e5e5;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e5e5e5;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: fixed;
+            min-width: 700px;
+        }
+        /* Colonne tabella messaggi */
+        table.messages-table th:nth-child(1) { width: 140px; }  /* Date */
+        table.messages-table th:nth-child(2) { width: 100px; }  /* Status */
+        table.messages-table th:nth-child(3) { width: 22%; }    /* Sender */
+        table.messages-table th:nth-child(4) { width: 22%; }    /* Recipient */
+        table.messages-table th:nth-child(5) { width: 18%; }    /* Relay */
+        table.messages-table th:nth-child(6) { width: 70px; }   /* Delay */
+        /* Colonne tabella daily stats */
+        table.daily-table th:nth-child(1) { width: 110px; }     /* Date */
+        table.daily-table th:nth-child(7) { width: 80px; }      /* Success % */
+        th {
+            text-align: left;
+            padding: 10px 16px;
+            background: #fafafa;
+            border-bottom: 1px solid #e5e5e5;
+            font-weight: 500;
+            color: #555;
+            white-space: nowrap;
+        }
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 0;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #fafafa; }
+
+        /* Status badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .badge.delivered { background: #dcfce7; color: #16a34a; }
+        .badge.delivered::before { background: #16a34a; }
+        .badge.bounced { background: #fee2e2; color: #dc2626; }
+        .badge.bounced::before { background: #dc2626; }
+        .badge.deferred { background: #fef3c7; color: #d97706; }
+        .badge.deferred::before { background: #d97706; }
+        .badge.dropped { background: #f3f4f6; color: #6b7280; }
+        .badge.dropped::before { background: #6b7280; }
+        .badge.accepted { background: #dbeafe; color: #2563eb; }
+        .badge.accepted::before { background: #2563eb; }
+
+        /* Pagination */
+        .pagination {
+            padding: 14px 20px;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #666;
+        }
+        .pagination a {
+            padding: 4px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+        }
+        .pagination a:hover { background: #f5f5f5; }
+        .empty { padding: 40px; text-align: center; color: #999; font-size: 14px; }
+        header nav { display: flex; align-items: center; gap: 4px; }
+        header nav a { color: #2563eb; text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 6px; }
+        header nav a:hover { background: #f0f4ff; }
+        header nav a.active { background: #2563eb; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Denali Relay &mdash; Dashboard</h1>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <nav>
+                <a href="/" class="active">Messages</a>
+                <a href="/chart">Chart</a>
+            </nav>
+            <span class="user">{{ username }}</span>
+            <a href="/logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Summary cards mese corrente -->
+        <div class="cards">
+            <div class="card">
+                <div class="label">This month — Total</div>
+                <div class="value">{{ month_stats.total or 0 }}</div>
+            </div>
+            <div class="card delivered">
+                <div class="label">Delivered</div>
+                <div class="value">{{ month_stats.delivered or 0 }}</div>
+            </div>
+            <div class="card bounced">
+                <div class="label">Bounced</div>
+                <div class="value">{{ month_stats.bounced or 0 }}</div>
+            </div>
+            <div class="card deferred">
+                <div class="label">Deferred</div>
+                <div class="value">{{ month_stats.deferred or 0 }}</div>
+            </div>
+            <div class="card dropped">
+                <div class="label">Dropped</div>
+                <div class="value">{{ month_stats.dropped or 0 }}</div>
+            </div>
+        </div>
+
+        <!-- Filtri -->
+        <form class="filters" method="get">
+            <label>Status</label>
+            <select name="status">
+                <option value="all" {% if status_filter=='all' %}selected{% endif %}>All</option>
+                <option value="delivered" {% if status_filter=='delivered' %}selected{% endif %}>Delivered</option>
+                <option value="bounced" {% if status_filter=='bounced' %}selected{% endif %}>Bounced</option>
+                <option value="deferred" {% if status_filter=='deferred' %}selected{% endif %}>Deferred</option>
+                <option value="dropped" {% if status_filter=='dropped' %}selected{% endif %}>Dropped</option>
+                <option value="accepted" {% if status_filter=='accepted' %}selected{% endif %}>Accepted</option>
+            </select>
+            <label>Period</label>
+            <select name="days">
+                <option value="7" {% if days==7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days==30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if days==90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+            <button type="submit">Apply</button>
+        </form>
+
+        <!-- Tabella messaggi -->
+        <div class="section">
+            <div class="section-header">Messages ({{ total }})</div>
+            {% if messages %}
+            <div class="table-wrap">
+            <table class="messages-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Sender</th>
+                        <th>Recipient</th>
+                        <th>Relay</th>
+                        <th>Delay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in messages %}
+                    <tr>
+                        <td title="{{ m.timestamp }}">{{ m.timestamp }}</td>
+                        <td><span class="badge {{ m.status }}">{{ m.status|capitalize }}</span></td>
+                        <td title="{{ m.sender or '' }}">{{ m.sender or '—' }}</td>
+                        <td title="{{ m.recipient or '' }}">{{ m.recipient or '—' }}</td>
+                        <td title="{{ m.relay or '' }}">{{ m.relay or '—' }}</td>
+                        <td title="{{ m.delay or '' }}">{{ m.delay or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <div class="pagination">
+                <span>Page {{ page }} of {{ total_pages }}</span>
+                <div>
+                    {% if page > 1 %}
+                    <a href="?status={{ status_filter }}&days={{ days }}&page={{ page - 1 }}">← Prev</a>
+                    {% endif %}
+                    {% if page < total_pages %}
+                    <a href="?status={{ status_filter }}&days={{ days }}&page={{ page + 1 }}">Next →</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty">No messages found for the selected period.</div>
+            {% endif %}
+        </div>
+
+        <!-- Statistiche giornaliere -->
+        <div class="section">
+            <div class="section-header">Daily Statistics</div>
+            {% if daily_stats %}
+            <div class="table-wrap">
+            <table class="daily-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Delivered</th>
+                        <th>Bounced</th>
+                        <th>Deferred</th>
+                        <th>Dropped</th>
+                        <th>Success %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in daily_stats %}
+                    <tr>
+                        <td>{{ d.day }}</td>
+                        <td>{{ d.total }}</td>
+                        <td>{{ d.delivered or 0 }}</td>
+                        <td>{{ d.bounced or 0 }}</td>
+                        <td>{{ d.deferred or 0 }}</td>
+                        <td>{{ d.dropped or 0 }}</td>
+                        <td>
+                            {% if d.total > 0 %}
+                                {{ "%.0f"|format((d.delivered or 0) / d.total * 100) }}%
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% else %}
+            <div class="empty">No data available.</div>
+            {% endif %}
+        </div>
+
+    </div>
+</body>
+</html>

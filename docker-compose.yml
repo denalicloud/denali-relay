@@ -1,0 +1,86 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - relay-internal
+
+  policy-daemon:
+    image: massmux/relay-policy-daemon:latest
+    restart: unless-stopped
+    volumes:
+      - ./policy-daemon/quota.conf:/etc/quota.conf:ro
+    networks:
+      - relay-internal
+    depends_on:
+      - redis
+
+  dkim-milter:
+    image: massmux/relay-dkim-milter:latest
+    restart: unless-stopped
+    environment:
+      - DKIM_KEY_PATH=/etc/dkim/mail.private
+      - DKIM_SELECTOR=mail
+    volumes:
+      - ./opendkim/keys/mail.private:/etc/dkim/mail.private:ro
+    networks:
+      - relay-internal
+
+  postfix:
+    image: massmux/relay-postfix:latest
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "587:587"
+      - "465:465"
+    volumes:
+      - ./postfix/main.cf:/etc/postfix/main.cf:ro
+      - ./postfix/master.cf:/etc/postfix/master.cf:ro
+      - ./postfix/sasl/sasl_passwd:/etc/postfix/sasl_passwd:ro
+      - ./postfix/sasl/smtpd.conf:/etc/postfix/sasl/smtpd.conf:ro
+      - ./postfix/transport:/etc/postfix/transport:ro
+      - /etc/letsencrypt/live/mx517.servers.li:/etc/letsencrypt/live/mx517.servers.li:ro
+      - /etc/letsencrypt/archive/mx517.servers.li:/etc/letsencrypt/archive/mx517.servers.li:ro
+      - postfix-queue:/var/spool/postfix
+    networks:
+      - relay-internal
+    depends_on:
+      - policy-daemon
+      - dkim-milter
+
+  log-parser:
+    image: massmux/relay-log-parser:latest
+    restart: unless-stopped
+    volumes:
+      - /var/log/relay-postfix.log:/var/log/relay-postfix.log:ro
+      - ./data:/data
+    networks:
+      - relay-internal
+
+  webui:
+    image: massmux/relay-webui:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./data:/data
+      - ./postfix/sasl/sasl_passwd:/etc/relay/sasl_passwd:ro
+      - ./webui/templates:/app/templates:ro
+    networks:
+      - relay-internal
+    depends_on:
+      - log-parser
+
+volumes:
+  redis-data:
+  postfix-queue:
+
+networks:
+  relay-internal:
+    driver: bridge

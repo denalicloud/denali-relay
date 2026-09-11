@@ -1,0 +1,66 @@
+# Identità
+myhostname = mx517.servers.li
+mydomain = servers.li
+myorigin = $myhostname
+
+# Relay puro: nessuna consegna locale
+mydestination =
+local_transport = error:local delivery disabled
+mynetworks = 127.0.0.0/8
+
+# TLS in entrata
+smtpd_tls_cert_file = /etc/letsencrypt/live/mx517.servers.li/fullchain.pem
+smtpd_tls_key_file  = /etc/letsencrypt/live/mx517.servers.li/privkey.pem
+smtpd_tls_security_level = may
+smtpd_tls_loglevel = 1
+
+# TLS in uscita
+smtp_tls_security_level = may
+smtp_tls_loglevel = 1
+
+# SASL
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = cyrus
+smtpd_sasl_path = smtpd
+smtpd_sasl_security_options = noanonymous
+broken_sasl_auth_clients = yes
+
+# Restrizioni accesso: solo autenticati
+smtpd_relay_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject
+
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject
+
+# Policy quota: chiamata dopo DATA, sempre eseguita
+smtpd_end_of_data_restrictions =
+    check_policy_service inet:policy-daemon:10031
+
+# Limiti
+message_size_limit = 52428800
+smtpd_client_connection_rate_limit = 100
+compatibility_level = 3.6
+
+
+
+# DKIM signing milter
+milter_default_action = accept
+milter_protocol = 6
+smtpd_milters = inet:dkim-milter:8891
+non_smtpd_milters = inet:dkim-milter:8891
+maillog_file = /dev/stdout
+
+# Rate limiting uscita: 1 email ogni 2 secondi
+default_destination_rate_delay = 2s
+default_destination_concurrency_limit = 1
+smtp_destination_rate_delay = 2s
+smtp_destination_concurrency_limit = 1
+
+# Transport personalizzati per domini con restrizioni
+
+# Transport personalizzati per domini con restrizioni
+transport_maps = hash:/etc/postfix/transport

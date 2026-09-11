@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relay — Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+        }
+        header {
+            background: white;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+        }
+        header h1 { font-size: 16px; font-weight: 600; }
+        header .user { font-size: 13px; color: #666; }
+        header nav { display: flex; align-items: center; gap: 4px; }
+        header nav a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        header nav a:hover { background: #f0f4ff; }
+        header nav a.active { background: #2563eb; color: white; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        .page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #111; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card { background: white; border-radius: 8px; padding: 16px 20px; border: 1px solid #e5e5e5; }
+        .card .label { font-size: 12px; color: #666; margin-bottom: 4px; }
+        .card .value { font-size: 24px; font-weight: 600; }
+        .card.delivered .value { color: #16a34a; }
+        .card.bounced   .value { color: #dc2626; }
+        .card.deferred  .value { color: #d97706; }
+        .card.dropped   .value { color: #6b7280; }
+        .section { background: white; border-radius: 8px; border: 1px solid #e5e5e5; margin-bottom: 24px; overflow: hidden; }
+        .section-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e5e5e5;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .legend { display: flex; gap: 16px; font-size: 12px; font-weight: 400; color: #555; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+        .chart-wrap { padding: 20px 24px 24px; position: relative; height: 380px; }
+        .rate-wrap { padding: 20px 24px 24px; position: relative; height: 220px; border-top: 1px solid #e5e5e5; }
+        .empty { padding: 60px; text-align: center; color: #999; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Denali Relay — Dashboard</h1>
+        <div style="display:flex;align-items:center;gap:16px;">
+            <nav>
+                <a href="/">Messages</a>
+                <a href="/chart" class="active">Chart</a>
+            </nav>
+            <span class="user">{{ username }}</span>
+            <a href="/logout" style="color:#2563eb;text-decoration:none;font-size:13px;">Logout</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-title">Monthly statistics — {{ month_label }}</div>
+
+        <div class="cards">
+            <div class="card">
+                <div class="label">Total</div>
+                <div class="value">{{ month_stats.total or 0 }}</div>
+            </div>
+            <div class="card delivered">
+                <div class="label">Delivered</div>
+                <div class="value">{{ month_stats.delivered or 0 }}</div>
+            </div>
+            <div class="card bounced">
+                <div class="label">Bounced</div>
+                <div class="value">{{ month_stats.bounced or 0 }}</div>
+            </div>
+            <div class="card deferred">
+                <div class="label">Deferred</div>
+                <div class="value">{{ month_stats.deferred or 0 }}</div>
+            </div>
+            <div class="card dropped">
+                <div class="label">Dropped</div>
+                <div class="value">{{ month_stats.dropped or 0 }}</div>
+            </div>
+        </div>
+
+        {% if chart_data.labels %}
+        <div class="section">
+            <div class="section-header">
+                <span>Daily volume</span>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-dot" style="background:#16a34a"></span>Delivered</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#d97706"></span>Deferred</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#dc2626"></span>Bounced</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>Dropped</span>
+                </div>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="volumeChart"></canvas>
+            </div>
+            <div class="section-header" style="border-top:1px solid #e5e5e5;border-bottom:none;">
+                <span>Delivery rate %</span>
+            </div>
+            <div class="rate-wrap">
+                <canvas id="rateChart"></canvas>
+            </div>
+        </div>
+        {% else %}
+        <div class="section">
+            <div class="empty">No data for {{ month_label }}.</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+    const data = {{ chart_data | tojson }};
+    const labels    = data.labels;
+    const delivered = data.delivered;
+    const bounced   = data.bounced;
+    const deferred  = data.deferred;
+    const dropped   = data.dropped;
+    const total     = data.total;
+
+    const rate = total.map((t, i) =>
+        t > 0 ? Math.round(delivered[i] / t * 100) : null
+    );
+
+    const xScale = {
+        grid: { color: "#f0f0f0" },
+        ticks: { font: { size: 11 }, color: "#666" },
+    };
+
+    new Chart(document.getElementById("volumeChart"), {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [
+                { label: "Delivered", data: delivered, backgroundColor: "#16a34a", stack: "s" },
+                { label: "Deferred",  data: deferred,  backgroundColor: "#d97706", stack: "s" },
+                { label: "Bounced",   data: bounced,   backgroundColor: "#dc2626", stack: "s" },
+                { label: "Dropped",   data: dropped,   backgroundColor: "#9ca3af", stack: "s" },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { mode: "index", intersect: false } },
+            scales: {
+                x: { ...xScale, stacked: true },
+                y: { stacked: true, grid: { color: "#f0f0f0" }, ticks: { font: { size: 11 }, color: "#666", precision: 0 } },
+            },
+        },
+    });
+
+    new Chart(document.getElementById("rateChart"), {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Delivery rate %",
+                data: rate,
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37,99,235,0.08)",
+                borderWidth: 2,
+                pointRadius: 4,
+                pointBackgroundColor: "#2563eb",
+                fill: true,
+                tension: 0.3,
+                spanGaps: true,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: "index", intersect: false, callbacks: { label: ctx => ` ${ctx.parsed.y}%` } },
+            },
+            scales: {
+                x: xScale,
+                y: { min: 0, max: 100, grid: { color: "#f0f0f0" }, ticks: { font: { size: 11 }, color: "#666", callback: v => v + "%" } },
+            },
+        },
+    });
+    </script>
+</body>
+</html>
