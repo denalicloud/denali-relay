@@ -5,7 +5,6 @@ policy-daemon/quota.conf
 redis/redis.conf
 relay.db
 data/relay.db
-docker-compose.yml
 
 # Chiavi private (DKIM, rspamd, TLS)
 *.private

@@ -43,8 +43,8 @@ services:
       - ./postfix/sasl/sasl_passwd:/etc/postfix/sasl_passwd:ro
       - ./postfix/sasl/smtpd.conf:/etc/postfix/sasl/smtpd.conf:ro
       - ./postfix/transport:/etc/postfix/transport:ro
-      - /etc/letsencrypt/live/your.hostname.com:/etc/letsencrypt/live/your.hostname.com:ro
-      - /etc/letsencrypt/archive/your.hostname.com:/etc/letsencrypt/archive/your.hostname.com:ro
+      - /etc/letsencrypt/live/${RELAY_HOSTNAME}:/etc/letsencrypt/live/${RELAY_HOSTNAME}:ro
+      - /etc/letsencrypt/archive/${RELAY_HOSTNAME}:/etc/letsencrypt/archive/${RELAY_HOSTNAME}:ro
       - postfix-queue:/var/spool/postfix
     networks:
       - relay-internal
