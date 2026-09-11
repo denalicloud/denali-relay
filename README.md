@@ -49,7 +49,7 @@ cp .env.example .env
 
 ### 4. Update hostname in main.cf
 
-Edit `postfix/main.cf` and replace `mx517.servers.li` with your actual hostname:
+Edit `postfix/main.cf` and replace with your actual hostname:
 
 ```
 myhostname = your.hostname.com
@@ -217,21 +217,6 @@ To rebuild locally from source:
 
 ```
 docker compose build --no-cache
-```
-
-To push updated images to Docker Hub:
-
-```
-docker tag relay-postfix:latest massmux/relay-postfix:latest
-docker tag relay-policy-daemon:latest massmux/relay-policy-daemon:latest
-docker tag relay-dkim-milter:latest massmux/relay-dkim-milter:latest
-docker tag relay-log-parser:latest massmux/relay-log-parser:latest
-docker tag relay-webui:latest massmux/relay-webui:latest
-docker push massmux/relay-postfix:latest
-docker push massmux/relay-policy-daemon:latest
-docker push massmux/relay-dkim-milter:latest
-docker push massmux/relay-log-parser:latest
-docker push massmux/relay-webui:latest
 ```
 
 ## Security Notes
